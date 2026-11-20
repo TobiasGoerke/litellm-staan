@@ -83,6 +83,7 @@ _COUNTRY_TO_MARKET: Final[Mapping[str, str]] = MappingProxyType(
         "en-us": "en-us",
     }
 )
+STAAN_AI_PRICING_MODE: Final = "ai"
 _TRUE_STRINGS: Final = frozenset(("true", "1", "yes"))
 _FALSE_STRINGS: Final = frozenset(("false", "0", "no"))
 _EMPTY_MAPPING: Final[Mapping[str, object]] = MappingProxyType({})
@@ -256,6 +257,11 @@ class StaanSearchConfig(BaseSearchConfig):
             return tuple(_STAAN_DOMAIN_LIST_ADAPTER.validate_python(value))
         except ValidationError as exc:
             raise ValueError(f"Invalid Staan domain filter `{name}`: {exc}") from exc
+
+    @classmethod
+    def pricing_mode(cls, optional_params: Mapping[str, object]) -> str | None:
+        """Staan bills every request that asks for extra snippets or full page content at its AI tier."""
+        return STAAN_AI_PRICING_MODE if cls._build_enrichment_params(optional_params) else None
 
     @classmethod
     def _build_enrichment_params(

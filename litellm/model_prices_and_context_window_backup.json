@@ -48525,6 +48525,22 @@
         "litellm_provider": "linkup",
         "mode": "search"
     },
+    "staan/search": {
+        "input_cost_per_query": 0.00235,
+        "litellm_provider": "staan",
+        "metadata": {
+            "notes": "Staan Web Search: EUR 2 per 1,000 requests."
+        },
+        "mode": "search"
+    },
+    "staan/search-ai": {
+        "input_cost_per_query": 0.0047,
+        "litellm_provider": "staan",
+        "metadata": {
+            "notes": "Staan Web Search for AI: EUR 4 per 1,000 requests. Applies when extra snippets or full page content are requested."
+        },
+        "mode": "search"
+    },
     "tavily/search": {
         "input_cost_per_query": 0.008,
         "litellm_provider": "tavily",
