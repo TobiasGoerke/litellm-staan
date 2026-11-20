@@ -39,19 +39,33 @@ def _registered_at_runtime(entry: str) -> bool:
     return live != GetModelCostMap.loaded_model_cost_map().get(entry)  # pyright: ignore[reportUnknownVariableType]  # `live` comes from the untyped registry
 
 
+def _search_mode(custom_llm_provider: str | None, optional_params: Mapping[str, object]) -> object:
+    """The request's mode: the value of the provider's mode parameter. Staan has two enrichment switches instead of
+    one mode parameter, so its provider config decides."""
+    if custom_llm_provider == "staan":
+        from litellm.llms.staan.search.transformation import StaanSearchConfig
+
+        return StaanSearchConfig.pricing_mode(optional_params)
+    mode_param: Final = SEARCH_MODE_PARAM_BY_PROVIDER.get(custom_llm_provider or "")
+    return optional_params.get(mode_param) if mode_param is not None else None
+
+
 def _pricing_model(
     model: str,
     custom_llm_provider: str | None,
     optional_params: Mapping[str, object] | None,
 ) -> str:
     """`<provider>/search-<mode>` when `model` is the generic `<provider>/search` entry (bare or provider-prefixed) and
-    the request's mode parameter names a priced entry, else `model`. A price registered at runtime on the generic entry
-    keeps applying until the mode entry is registered too."""
-    mode_param: Final = SEARCH_MODE_PARAM_BY_PROVIDER.get(custom_llm_provider or "")
+    the request's mode names a priced entry, else `model`. A price registered at runtime on the generic entry keeps
+    applying until the mode entry is registered too."""
     generic_model: Final = f"{custom_llm_provider}/search"
-    if mode_param is None or model not in (generic_model, f"{custom_llm_provider}/{generic_model}"):
+    if model not in (generic_model, f"{custom_llm_provider}/{generic_model}"):
         return model
-    mode: Final = (optional_params if optional_params is not None else EMPTY_OPTIONAL_PARAMS).get(mode_param)
+    mode: Final = _search_mode(
+        custom_llm_provider, optional_params if optional_params is not None else EMPTY_OPTIONAL_PARAMS
+    )
+    if mode is None:
+        return model
     mode_model: Final = f"{custom_llm_provider}/search-{mode}"
     priced: Final = mode_model in litellm.model_cost  # pyright: ignore[reportUnknownMemberType]  # registry is dynamically typed
     if not priced or (_registered_at_runtime(generic_model) and not _registered_at_runtime(mode_model)):
@@ -70,7 +84,7 @@ def search_provider_cost_per_query(
 
     Returns (input_cost, output_cost) where input_cost = queries * cost_per_query
     Supports tiered pricing based on max_results parameter, and per-mode price entries selected by the
-    provider's mode parameter (Tavily `search_depth`, Linkup `depth`).
+    provider's mode parameter (Tavily `search_depth`, Linkup `depth`) or, for Staan, its enrichment switches.
 
     Args:
         model: Model name (e.g., "exa_ai/search", "tavily/search")
